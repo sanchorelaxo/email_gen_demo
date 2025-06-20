@@ -101,9 +101,10 @@ http://localhost:8080/email_prompt_generator.html
 
 1. **Select a Prompt**: Choose from the dropdown menu of 71 email prompts
 2. **Review Prompt**: The selected prompt text will be displayed
-3. **Generate Content**: Click "Generate Email Content" to send the prompt to Ollama
-4. **Edit Content**: Use the rich text editor to modify the generated content
-5. **Copy/Export**: Copy the final content for use in your email campaigns
+3. **Fill Placeholders**: If the prompt contains `[placeholders]`, input fields will appear automatically. Enter your specific values (e.g., company name, product features)
+4. **Generate Content**: Click "Generate Email Content" to send the customized prompt to Ollama
+5. **Edit Content**: Use the rich text editor to modify the generated content
+6. **Copy/Export**: Copy the final content for use in your email campaigns
 
 ## 🔧 Configuration
 
