@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email Prompt Generator</title>
+    <!-- Include Quill stylesheet -->
+    <link href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+            font-size: 1.1em;
+        }
+        
+        select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 16px;
+            background-color: white;
+            transition: border-color 0.3s ease;
+        }
+        
+        select:focus {
+            outline: none;
+            border-color: #4CAF50;
+        }
+        
+        .generate-btn {
+            background-color: #4CAF50;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: background-color 0.3s ease;
+            margin: 10px 0;
+        }
+        
+        .generate-btn:hover {
+            background-color: #45a049;
+        }
+        
+        .generate-btn:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+            color: #666;
+            font-style: italic;
+        }
+        
+        .error {
+            background-color: #ffebee;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 10px 0;
+            border-left: 4px solid #c62828;
+        }
+        
+        .success {
+            background-color: #e8f5e8;
+            color: #2e7d32;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 10px 0;
+            border-left: 4px solid #2e7d32;
+        }
+        
+        .prompt-info {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 15px 0;
+            border-left: 4px solid #007bff;
+        }
+        
+        .prompt-info h3 {
+            margin: 0 0 10px 0;
+            color: #007bff;
+        }
+        
+        .prompt-text {
+            font-style: italic;
+            color: #666;
+            line-height: 1.4;
+        }
+        
+        #editor-container {
+            margin-top: 20px;
+        }
+        
+        #editor {
+            height: 400px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+        }
+        
+        .ql-editor {
+            font-size: 14px;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Email Prompt Generator</h1>
+        
+        <div class="form-group">
+            <label for="promptSelect">Select an Email Prompt:</label>
+            <select id="promptSelect">
+                <option value="">-- Choose a prompt --</option>
+            </select>
+        </div>
+        
+        <div id="promptInfo" class="prompt-info" style="display: none;">
+            <h3>Selected Prompt:</h3>
+            <div id="promptText" class="prompt-text"></div>
+        </div>
+        
+        <button id="generateBtn" class="generate-btn" disabled>Generate Email Content</button>
+        
+        <div id="loading" class="loading">
+            <p>🤖 Generating email content with Llama...</p>
+        </div>
+        
+        <div id="messages"></div>
+        
+        <div id="editor-container">
+            <label for="editor">Generated Email Content:</label>
+            <!-- Create the editor container -->
+            <div id="editor">
+                <p>Generated email content will appear here...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Include the Quill library -->
+    <script src="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.js"></script>
+    <script>
+        let emailPrompts = [];
+        let quill = null;
+
+        // Initialize Quill editor
+        function initializeQuill() {
+            console.log('Initializing Quill editor...');
+            quill = new Quill('#editor', {
+                theme: 'snow',
+                modules: {
+                    toolbar: [
+                        [{ 'header': [1, 2, 3, false] }],
+                        ['bold', 'italic', 'underline', 'strike'],
+                        [{ 'color': [] }, { 'background': [] }],
+                        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                        [{ 'align': [] }],
+                        ['link', 'image'],
+                        ['clean']
+                    ]
+                },
+                placeholder: 'Generated email content will appear here...'
+            });
+            console.log('Quill editor initialized successfully');
+        }
+
+        // Load JSON data
+        async function loadEmailPrompts() {
+            console.log('Loading email prompts...');
+            try {
+                const response = await fetch('email_prompts.json');
+                console.log('Fetch response status:', response.status);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const jsonText = await response.text();
+                console.log('JSON text length:', jsonText.length);
+                console.log('First 200 chars:', jsonText.substring(0, 200));
+                
+                emailPrompts = JSON.parse(jsonText);
+                console.log('Parsed email prompts:', emailPrompts.length, 'items');
+                console.log('First prompt:', emailPrompts[0]);
+                
+                populateSelect();
+                showMessage('Email prompts loaded successfully!', 'success');
+            } catch (error) {
+                console.error('Error loading email prompts:', error);
+                showMessage(`Error loading email prompts: ${error.message}`, 'error');
+            }
+        }
+
+        // Populate select dropdown
+        function populateSelect() {
+            console.log('Populating select dropdown...');
+            const select = document.getElementById('promptSelect');
+            
+            // Clear existing options except the first one
+            while (select.children.length > 1) {
+                select.removeChild(select.lastChild);
+            }
+            
+            emailPrompts.forEach((prompt, index) => {
+                console.log(`Processing prompt ${index}:`, prompt);
+                const option = document.createElement('option');
+                option.value = prompt.id;
+                
+                // Handle cases where title might be null or undefined
+                const title = prompt.title || 'Untitled';
+                option.textContent = `${prompt.id}. ${title}`;
+                select.appendChild(option);
+            });
+            
+            console.log('Select dropdown populated with', emailPrompts.length, 'options');
+        }
+
+        // Handle select change
+        document.getElementById('promptSelect').addEventListener('change', function() {
+            console.log('Select changed, value:', this.value);
+            const selectedId = parseInt(this.value);
+            const generateBtn = document.getElementById('generateBtn');
+            const promptInfo = document.getElementById('promptInfo');
+            const promptText = document.getElementById('promptText');
+            
+            if (selectedId && !isNaN(selectedId)) {
+                console.log('Looking for prompt with ID:', selectedId);
+                const selectedPrompt = emailPrompts.find(p => p.id === selectedId);
+                console.log('Found prompt:', selectedPrompt);
+                
+                if (selectedPrompt) {
+                    promptText.textContent = selectedPrompt.prompt;
+                    promptInfo.style.display = 'block';
+                    generateBtn.disabled = false;
+                    console.log('Prompt selected and button enabled');
+                } else {
+                    console.log('Prompt not found for ID:', selectedId);
+                }
+            } else {
+                console.log('No valid ID selected');
+                promptInfo.style.display = 'none';
+                generateBtn.disabled = true;
+            }
+        });
+
+        // Generate email content using Ollama
+        async function generateEmailContent() {
+            console.log('Generating email content...');
+            const selectedId = parseInt(document.getElementById('promptSelect').value);
+            const selectedPrompt = emailPrompts.find(p => p.id === selectedId);
+            
+            if (!selectedPrompt) {
+                showMessage('Please select a prompt first.', 'error');
+                return;
+            }
+
+            const generateBtn = document.getElementById('generateBtn');
+            const loading = document.getElementById('loading');
+            
+            generateBtn.disabled = true;
+            loading.style.display = 'block';
+            
+            try {
+                console.log('Sending request to Ollama with prompt:', selectedPrompt.prompt);
+                const response = await fetch('http://localhost:11434/api/generate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        model: 'llama3.2:1b',
+                        prompt: selectedPrompt.prompt,
+                        stream: false
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Ollama API error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                console.log('Ollama response:', data);
+                
+                if (data.response) {
+                    // Set content in Quill editor
+                    if (quill) {
+                        quill.setText(data.response);
+                    }
+                    showMessage('Email content generated successfully!', 'success');
+                } else {
+                    throw new Error('No response received from Ollama');
+                }
+                
+            } catch (error) {
+                console.error('Error generating content:', error);
+                showMessage(`Error generating content: ${error.message}. Make sure Ollama is running and the deepseek-coder:6.7b model is available.`, 'error');
+            } finally {
+                generateBtn.disabled = false;
+                loading.style.display = 'none';
+            }
+        }
+
+        // Show messages
+        function showMessage(message, type) {
+            console.log('Showing message:', type, message);
+            const messagesDiv = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = type;
+            messageDiv.textContent = message;
+            
+            messagesDiv.innerHTML = '';
+            messagesDiv.appendChild(messageDiv);
+            
+            // Auto-hide success messages after 3 seconds
+            if (type === 'success') {
+                setTimeout(() => {
+                    messageDiv.remove();
+                }, 3000);
+            }
+        }
+
+        // Event listeners
+        document.getElementById('generateBtn').addEventListener('click', generateEmailContent);
+
+        // Initialize when page loads
+        window.addEventListener('load', function() {
+            console.log('Page loaded, initializing...');
+            initializeQuill();
+            loadEmailPrompts();
+        });
+    </script>
+</body>
+</html>
