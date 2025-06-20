@@ -183,17 +183,66 @@
             font-size: 14px;
             line-height: 1.6;
         }
+        
+        .select-container {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            align-items: flex-end;
+        }
+        
+        .select-group {
+            flex: 1;
+        }
+        
+        .select-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+            font-size: 1.1em;
+        }
+        
+        select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 16px;
+            background-color: white;
+            cursor: pointer;
+            transition: border-color 0.3s ease;
+        }
+        
+        select:focus {
+            outline: none;
+            border-color: #007bff;
+        }
+        
+        select:disabled {
+            background-color: #f8f9fa;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>🚀 Email Prompt Generator</h1>
         
-        <div class="form-group">
-            <label for="promptSelect">Select an Email Prompt:</label>
-            <select id="promptSelect">
-                <option value="">-- Choose a prompt --</option>
-            </select>
+        <div class="select-container">
+            <div class="select-group">
+                <label for="categorySelect">Select a Category:</label>
+                <select id="categorySelect">
+                    <option value="">-- Choose a category --</option>
+                </select>
+            </div>
+            <div class="select-group">
+                <label for="promptSelect">Select an Email Prompt:</label>
+                <select id="promptSelect">
+                    <option value="">-- Choose a prompt --</option>
+                </select>
+            </div>
         </div>
         
         <div id="promptInfo" class="prompt-info" style="display: none;">
@@ -269,12 +318,34 @@
                 console.log('Parsed email prompts:', emailPrompts.length, 'items');
                 console.log('First prompt:', emailPrompts[0]);
                 
+                populateCategorySelect();
                 populateSelect();
                 showMessage('Email prompts loaded successfully!', 'success');
             } catch (error) {
                 console.error('Error loading email prompts:', error);
                 showMessage(`Error loading email prompts: ${error.message}`, 'error');
             }
+        }
+
+        // Populate category select dropdown
+        function populateCategorySelect() {
+            console.log('Populating category select dropdown...');
+            const categorySelect = document.getElementById('categorySelect');
+            
+            // Clear existing options except the first one
+            while (categorySelect.children.length > 1) {
+                categorySelect.removeChild(categorySelect.lastChild);
+            }
+            
+            const categories = [...new Set(emailPrompts.map(prompt => prompt.category))];
+            categories.forEach(category => {
+                const option = document.createElement('option');
+                option.value = category;
+                option.textContent = category;
+                categorySelect.appendChild(option);
+            });
+            
+            console.log('Category select dropdown populated with', categories.length, 'options');
         }
 
         // Populate select dropdown
@@ -287,7 +358,10 @@
                 select.removeChild(select.lastChild);
             }
             
-            emailPrompts.forEach((prompt, index) => {
+            const category = document.getElementById('categorySelect').value;
+            const filteredPrompts = category ? emailPrompts.filter(prompt => prompt.category === category) : emailPrompts;
+            
+            filteredPrompts.forEach((prompt, index) => {
                 console.log(`Processing prompt ${index}:`, prompt);
                 const option = document.createElement('option');
                 option.value = prompt.id;
@@ -298,8 +372,14 @@
                 select.appendChild(option);
             });
             
-            console.log('Select dropdown populated with', emailPrompts.length, 'options');
+            console.log('Select dropdown populated with', filteredPrompts.length, 'options');
         }
+
+        // Handle category select change
+        document.getElementById('categorySelect').addEventListener('change', function() {
+            console.log('Category select changed, value:', this.value);
+            populateSelect();
+        });
 
         // Handle select change
         document.getElementById('promptSelect').addEventListener('change', function() {
