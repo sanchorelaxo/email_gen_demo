@@ -123,6 +123,52 @@
             line-height: 1.4;
         }
         
+        #placeholders-container {
+            margin: 15px 0;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 6px;
+            border-left: 4px solid #28a745;
+            display: none;
+        }
+        
+        #placeholders-container h4 {
+            margin: 0 0 15px 0;
+            color: #28a745;
+            font-size: 1.1em;
+        }
+        
+        .placeholder-field {
+            margin-bottom: 15px;
+        }
+        
+        .placeholder-field label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #555;
+            font-size: 0.95em;
+        }
+        
+        .placeholder-field input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+        
+        .placeholder-field input:focus {
+            outline: none;
+            border-color: #28a745;
+        }
+        
+        .placeholder-field input::placeholder {
+            color: #999;
+            font-style: italic;
+        }
+        
         #editor-container {
             margin-top: 20px;
         }
@@ -153,6 +199,11 @@
         <div id="promptInfo" class="prompt-info" style="display: none;">
             <h3>Selected Prompt:</h3>
             <div id="promptText" class="prompt-text"></div>
+        </div>
+        
+        <div id="placeholders-container">
+            <h4>Enter placeholder values:</h4>
+            <div id="placeholders"></div>
         </div>
         
         <button id="generateBtn" class="generate-btn" disabled>Generate Email Content</button>
@@ -257,6 +308,8 @@
             const generateBtn = document.getElementById('generateBtn');
             const promptInfo = document.getElementById('promptInfo');
             const promptText = document.getElementById('promptText');
+            const placeholdersContainer = document.getElementById('placeholders-container');
+            const placeholders = document.getElementById('placeholders');
             
             if (selectedId && !isNaN(selectedId)) {
                 console.log('Looking for prompt with ID:', selectedId);
@@ -266,6 +319,34 @@
                 if (selectedPrompt) {
                     promptText.textContent = selectedPrompt.prompt;
                     promptInfo.style.display = 'block';
+                    
+                    const placeholdersRegex = /\[(.*?)\]/g;
+                    const placeholdersMatches = selectedPrompt.prompt.matchAll(placeholdersRegex);
+                    
+                    if (placeholdersMatches) {
+                        placeholdersContainer.style.display = 'block';
+                        placeholders.innerHTML = '';
+                        
+                        for (const match of placeholdersMatches) {
+                            const placeholder = match[1];
+                            const placeholderField = document.createElement('div');
+                            placeholderField.className = 'placeholder-field';
+                            
+                            const label = document.createElement('label');
+                            label.textContent = placeholder;
+                            placeholderField.appendChild(label);
+                            
+                            const input = document.createElement('input');
+                            input.type = 'text';
+                            input.placeholder = `Enter ${placeholder}`;
+                            placeholderField.appendChild(input);
+                            
+                            placeholders.appendChild(placeholderField);
+                        }
+                    } else {
+                        placeholdersContainer.style.display = 'none';
+                    }
+                    
                     generateBtn.disabled = false;
                     console.log('Prompt selected and button enabled');
                 } else {
@@ -274,6 +355,7 @@
             } else {
                 console.log('No valid ID selected');
                 promptInfo.style.display = 'none';
+                placeholdersContainer.style.display = 'none';
                 generateBtn.disabled = true;
             }
         });
@@ -295,8 +377,23 @@
             generateBtn.disabled = true;
             loading.style.display = 'block';
             
+            const placeholdersContainer = document.getElementById('placeholders-container');
+            const placeholders = document.getElementById('placeholders');
+            const placeholdersFields = placeholders.children;
+            
+            let promptWithPlaceholders = selectedPrompt.prompt;
+            
+            for (let i = 0; i < placeholdersFields.length; i++) {
+                const placeholderField = placeholdersFields[i];
+                const input = placeholderField.children[1];
+                const placeholder = input.placeholder.replace('Enter ', '');
+                const value = input.value;
+                
+                promptWithPlaceholders = promptWithPlaceholders.replace(`[${placeholder}]`, value);
+            }
+            
             try {
-                console.log('Sending request to Ollama with prompt:', selectedPrompt.prompt);
+                console.log('Sending request to Ollama with prompt:', promptWithPlaceholders);
                 const response = await fetch('http://localhost:11434/api/generate', {
                     method: 'POST',
                     headers: {
@@ -304,7 +401,7 @@
                     },
                     body: JSON.stringify({
                         model: 'llama3.2:1b',
-                        prompt: selectedPrompt.prompt,
+                        prompt: promptWithPlaceholders,
                         stream: false
                     })
                 });
